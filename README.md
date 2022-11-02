@@ -1,5 +1,6 @@
 # Stacje pogodowe 50km od punktu
 
+```
   #standardSQL
   WITH params AS (
     SELECT ST_GeogPoint(-122.021,37.406) AS center, 50 AS maxdist_km ),
@@ -15,3 +16,4 @@
 
   )
   SELECT * from distance_from_center
+```
