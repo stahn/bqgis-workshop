@@ -2,1013 +2,863 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Drzewo Wiedzy — Obsidian Visualizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Drzewo Wiedzy — Obsidian Sketchbook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0d1b2a;
-      color: #e0e0e0;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+    :root {
+      --paper:      #f2e8d5;
+      --paper-mid:  #e8dcc6;
+      --paper-dark: #ddd0b4;
+      --ink:        #2a1a0e;
+      --ink-mid:    #5a3c24;
+      --ink-light:  #9a7050;
+      --leaf:       #3a5c2e;
+      --leaf-light: #6a9b58;
+      --accent:     #b87820;
+      --accent-bg:  rgba(184,120,32,0.12);
+      --border:     #c8b08a;
+      --panel-bg:   #faf4e6;
     }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--paper); }
+
+    /* ── LAYOUT ── */
+    #layout { display: flex; flex-direction: column; height: 100vh; }
 
     #header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 20px;
-      background: rgba(255,255,255,0.04);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      flex-shrink: 0;
-      z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 14px; gap: 8px;
+      background: var(--panel-bg);
+      border-bottom: 1.5px solid var(--border);
+      flex-shrink: 0; z-index: 10;
     }
 
-    #header h1 {
-      font-size: 15px;
-      font-weight: 600;
-      color: #a5d6a7;
-      letter-spacing: 1px;
+    #header-title {
+      font-family: 'Caveat', cursive; font-size: 21px; font-weight: 700;
+      color: var(--ink); white-space: nowrap; user-select: none;
     }
+    @media (max-width: 480px) { #header-title { font-size: 17px; } }
 
-    #header-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+    #header-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
     .btn {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #ccc;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: all 0.2s;
-      white-space: nowrap;
+      display: flex; align-items: center; gap: 4px;
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--ink-mid); padding: 5px 10px; border-radius: 8px;
+      cursor: pointer; font-family: 'Caveat', cursive; font-size: 15px;
+      transition: background 0.15s, color 0.15s; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
-    .btn.primary {
-      background: rgba(76,175,80,0.2);
-      border-color: rgba(76,175,80,0.4);
-      color: #a5d6a7;
-    }
-    .btn.primary:hover { background: rgba(76,175,80,0.35); color: #fff; }
+    .btn:hover, .btn:active { background: var(--paper-dark); color: var(--ink); }
+    .btn.green { border-color: var(--leaf); color: var(--leaf); }
+    .btn.green:hover, .btn.green:active { background: rgba(58,92,46,0.1); }
+    .btn-label { font-size: 13px; }
+    @media (max-width: 520px) { .btn-label { display: none; } .btn { padding: 5px 8px; } }
 
-    #upload-btn {
-      position: relative;
-      overflow: hidden;
-    }
-    #upload-btn input[type=file] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      font-size: 0;
-    }
+    #upload-btn { position: relative; overflow: hidden; }
+    #upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
 
-    #main {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
+    /* ── MAIN ── */
+    #main { display: flex; flex: 1; overflow: hidden; }
 
-    #tree-container {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
+    #tree-container { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+    #tree-canvas { display: block; width: 100%; height: 100%; }
 
-    #tree-canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
+    /* ── DESKTOP SIDE PANEL ── */
+    #side-panel {
+      width: 285px; flex-shrink: 0;
+      background: var(--panel-bg); border-left: 1.5px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
     }
+    @media (max-width: 767px) { #side-panel { display: none; } }
 
+    .panel-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 2.5px;
+      color: var(--ink-light); margin-bottom: 4px;
+    }
+    #sp-head { padding: 14px 16px 11px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    #sp-title {
+      font-family: 'Caveat', cursive; font-size: 22px; font-weight: 700;
+      color: var(--ink); line-height: 1.2; margin-top: 3px;
+    }
+    #sp-title.empty { font-family: system-ui; font-size: 12px; font-weight: 400; color: #bbb; font-style: italic; }
+    #sp-body { flex: 1; overflow-y: auto; padding: 13px 16px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    #sp-links { padding: 10px 16px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
+
+    /* ── SHARED NOTE CONTENT ── */
+    .note-md { font-size: 13.5px; line-height: 1.75; color: var(--ink-mid); }
+    .note-md h1 { font-family: 'Caveat', cursive; font-size: 21px; color: var(--ink); margin: 14px 0 3px; }
+    .note-md h2 { font-family: 'Caveat', cursive; font-size: 17px; color: var(--ink); margin: 11px 0 2px; }
+    .note-md h3 { font-size: 13px; color: var(--ink-mid); font-weight: 600; margin: 9px 0 2px; }
+    .note-md p { margin-bottom: 9px; }
+    .note-md ul, .note-md ol { margin: 4px 0 9px 16px; }
+    .note-md li { margin-bottom: 3px; }
+    .note-md strong { color: var(--ink); }
+    .note-md em { color: var(--accent); }
+    .note-md code {
+      background: rgba(58,92,46,0.1); color: var(--leaf);
+      padding: 1px 5px; border-radius: 3px;
+      font-size: 12px; font-family: 'Cascadia Code', 'Fira Code', monospace;
+    }
+    .note-md pre {
+      background: rgba(42,26,14,0.06); border: 1px solid var(--border);
+      border-radius: 7px; padding: 10px 12px; margin: 7px 0; overflow-x: auto;
+    }
+    .note-md pre code { background: none; color: var(--leaf); font-size: 11.5px; padding: 0; }
+    .note-md blockquote {
+      border-left: 3px solid var(--border); padding-left: 10px;
+      margin: 6px 0; color: var(--ink-light); font-style: italic;
+    }
+    .note-md table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 6px 0; }
+    .note-md td, .note-md th { border: 1px solid var(--border); padding: 4px 8px; }
+    .note-md th { background: rgba(42,26,14,0.05); font-weight: 600; }
+    .wiki-link { color: var(--leaf); cursor: pointer; border-bottom: 1px dashed var(--leaf-light); }
+    .wiki-link:hover { color: var(--ink); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+    .chip {
+      background: rgba(58,92,46,0.08); border: 1.5px solid rgba(58,92,46,0.25);
+      border-radius: 20px; padding: 2px 10px;
+      font-family: 'Caveat', cursive; font-size: 14px; color: var(--leaf);
+      cursor: pointer; transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chip:hover, .chip:active { background: rgba(58,92,46,0.18); }
+
+    /* ── TOOLTIP ── */
     #tooltip {
-      position: fixed;
-      background: rgba(10,20,35,0.92);
-      border: 1px solid rgba(76,175,80,0.4);
-      color: #e0e0e0;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      pointer-events: none;
-      display: none;
-      white-space: nowrap;
-      z-index: 100;
+      position: fixed; z-index: 200;
+      background: var(--ink); color: var(--paper);
+      padding: 5px 11px; border-radius: 7px;
+      font-family: 'Caveat', cursive; font-size: 15px;
+      pointer-events: none; display: none; white-space: nowrap;
     }
 
-    #info-panel {
-      width: 300px;
-      flex-shrink: 0;
-      background: rgba(255,255,255,0.03);
-      border-left: 1px solid rgba(255,255,255,0.07);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+    /* ── PROGRESS ── */
+    #progress {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      font-family: 'Caveat', cursive; font-size: 14px; color: var(--ink-mid);
+      background: rgba(242,232,213,0.88); border: 1px solid var(--border);
+      padding: 3px 13px; border-radius: 20px; pointer-events: none;
+      transition: opacity 0.6s; white-space: nowrap;
     }
 
-    #panel-header {
-      padding: 14px 18px 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      flex-shrink: 0;
-    }
-
-    #panel-header .label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: #4caf50;
-      margin-bottom: 6px;
-    }
-
-    #note-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #fff;
-      line-height: 1.3;
-    }
-    #note-title.placeholder { font-size: 13px; color: #555; font-weight: 400; font-style: italic; }
-
-    #panel-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px 18px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,0.1) transparent;
-    }
-    #panel-body::-webkit-scrollbar { width: 4px; }
-    #panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-
-    #note-content { font-size: 13px; line-height: 1.75; color: #aaa; }
-    #note-content h1 { font-size: 15px; color: #ddd; margin: 14px 0 6px; }
-    #note-content h2 { font-size: 13px; color: #bbb; margin: 12px 0 4px; }
-    #note-content h3 { font-size: 12px; color: #aaa; margin: 10px 0 4px; }
-    #note-content p { margin-bottom: 10px; }
-    #note-content ul { margin: 6px 0 10px 16px; }
-    #note-content li { margin-bottom: 3px; }
-    #note-content code {
-      background: rgba(76,175,80,0.12);
-      color: #a5d6a7;
-      padding: 1px 5px;
-      border-radius: 3px;
-      font-size: 12px;
-      font-family: 'Cascadia Code', 'Fira Code', monospace;
-    }
-    #note-content pre {
-      background: rgba(0,0,0,0.4);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px;
-      padding: 10px 12px;
-      margin: 8px 0;
-      overflow-x: auto;
-    }
-    #note-content pre code { background: none; padding: 0; color: #81c784; font-size: 11px; }
-    #note-content strong { color: #ddd; }
-    #note-content em { color: #90caf9; }
-    #note-content blockquote {
-      border-left: 3px solid rgba(76,175,80,0.5);
-      padding-left: 10px;
-      margin: 8px 0;
-      color: #888;
-      font-style: italic;
-    }
-    #note-content table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 8px 0; }
-    #note-content td, #note-content th {
-      border: 1px solid rgba(255,255,255,0.1);
-      padding: 4px 8px;
-    }
-    #note-content th { background: rgba(255,255,255,0.05); color: #ccc; }
-    .wiki-link {
-      color: #66bb6a;
-      cursor: pointer;
-      text-decoration: none;
-      border-bottom: 1px dashed rgba(102,187,106,0.4);
-    }
-    .wiki-link:hover { color: #a5d6a7; border-bottom-color: #a5d6a7; }
-
-    #panel-links {
-      padding: 10px 18px 16px;
-      border-top: 1px solid rgba(255,255,255,0.07);
-      flex-shrink: 0;
-    }
-    #panel-links .label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: #555;
-      margin-bottom: 8px;
-    }
-    #links-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .link-chip {
-      background: rgba(76,175,80,0.1);
-      border: 1px solid rgba(76,175,80,0.25);
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 11px;
-      color: #81c784;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .link-chip:hover { background: rgba(76,175,80,0.25); color: #fff; }
-
-    #progress-bar {
-      position: absolute;
-      bottom: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 20px;
-      padding: 5px 16px;
-      font-size: 11px;
-      color: #666;
-      pointer-events: none;
-      transition: opacity 0.5s;
-    }
-
+    /* ── DROP OVERLAY ── */
     #drop-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(76,175,80,0.1);
-      border: 3px dashed rgba(76,175,80,0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-      pointer-events: none;
+      position: absolute; inset: 0; display: none;
+      background: rgba(242,232,213,0.9); border: 3px dashed var(--leaf);
+      align-items: center; justify-content: center; z-index: 50; pointer-events: none;
     }
     #drop-overlay.active { display: flex; }
     #drop-overlay span {
-      font-size: 20px;
-      color: #a5d6a7;
-      background: rgba(0,0,0,0.7);
-      padding: 16px 32px;
-      border-radius: 12px;
+      font-family: 'Caveat', cursive; font-size: 22px; color: var(--leaf);
+      background: var(--panel-bg); border: 1.5px solid var(--leaf);
+      padding: 14px 28px; border-radius: 10px;
     }
+
+    /* ── MOBILE FAB ── */
+    #fab {
+      position: absolute; bottom: 46px; right: 14px;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--panel-bg); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; cursor: pointer; z-index: 10;
+      box-shadow: 0 2px 8px rgba(42,26,14,0.18);
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media (min-width: 768px) { #fab { display: none; } }
+
+    /* ── BOTTOM SHEET (mobile) ── */
+    #backdrop {
+      position: fixed; inset: 0; z-index: 150;
+      background: rgba(42,26,14,0.35); opacity: 0;
+      pointer-events: none; transition: opacity 0.3s;
+    }
+    #backdrop.on { opacity: 1; pointer-events: auto; }
+
+    #sheet {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--panel-bg);
+      border-radius: 22px 22px 0 0; border-top: 2px solid var(--border);
+      max-height: 75vh; z-index: 200;
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+      will-change: transform;
+    }
+    #sheet.open { transform: translateY(0); }
+    @media (min-width: 768px) { #sheet, #backdrop { display: none !important; } }
+
+    #sheet-handle { display: flex; justify-content: center; padding: 10px 0 5px; flex-shrink: 0; cursor: grab; }
+    .handle-bar { width: 38px; height: 4px; background: var(--border); border-radius: 2px; }
+
+    #sheet-head { padding: 1px 18px 11px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    #sheet-title { font-family: 'Caveat', cursive; font-size: 25px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+    #sheet-body { flex: 1; overflow-y: auto; padding: 12px 18px; scrollbar-width: thin; }
+    #sheet-links-wrap { padding: 9px 18px 28px; border-top: 1px solid var(--border); flex-shrink: 0; }
   </style>
 </head>
 <body>
+<div id="layout">
 
-<div id="header">
-  <h1>🌳 Drzewo Wiedzy — Obsidian Visualizer</h1>
-  <div id="header-controls">
-    <span style="font-size:11px;color:#444;">Upuść pliki .md lub:</span>
-    <label class="btn" id="upload-btn">
-      📂 Wczytaj notatki
-      <input type="file" multiple accept=".md" id="file-input">
-    </label>
-    <button class="btn primary" onclick="restartAnimation()">▶ Odtwórz</button>
-    <button class="btn" onclick="resetToExample()">📝 Przykład</button>
+  <div id="header">
+    <div id="header-title">🌿 Drzewo Wiedzy</div>
+    <div id="header-controls">
+      <label class="btn" id="upload-btn">
+        📂 <span class="btn-label">Wczytaj .md</span>
+        <input type="file" multiple accept=".md" id="file-input">
+      </label>
+      <button class="btn green" onclick="restartAnim()">▶ <span class="btn-label">Odtwórz</span></button>
+      <button class="btn" onclick="resetExample()" title="Załaduj przykład">📝 <span class="btn-label">Przykład</span></button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="tree-container">
+      <canvas id="tree-canvas"></canvas>
+      <div id="drop-overlay"><span>📂 Upuść pliki .md</span></div>
+      <div id="progress">Rośnie drzewo...</div>
+      <div id="tooltip"></div>
+      <div id="fab" onclick="restartAnim()" title="Odtwórz">▶</div>
+    </div>
+
+    <!-- DESKTOP PANEL -->
+    <div id="side-panel">
+      <div id="sp-head">
+        <div class="panel-label">NOTATKA OBSIDIAN</div>
+        <div id="sp-title" class="empty">Kliknij węzeł drzewa</div>
+      </div>
+      <div id="sp-body"><div id="sp-content" class="note-md"></div></div>
+      <div id="sp-links" style="display:none">
+        <div class="panel-label">POWIĄZANE</div>
+        <div id="sp-chips" class="chips"></div>
+      </div>
+    </div>
   </div>
 </div>
 
-<div id="main">
-  <div id="tree-container">
-    <canvas id="tree-canvas"></canvas>
-    <div id="drop-overlay"><span>Upuść pliki .md tutaj</span></div>
-    <div id="progress-bar">Rośnie drzewo...</div>
-    <div id="tooltip"></div>
+<!-- MOBILE BOTTOM SHEET -->
+<div id="backdrop" onclick="closeSheet()"></div>
+<div id="sheet">
+  <div id="sheet-handle"><div class="handle-bar"></div></div>
+  <div id="sheet-head">
+    <div id="sheet-title">—</div>
   </div>
-
-  <div id="info-panel">
-    <div id="panel-header">
-      <div class="label">NOTATKA</div>
-      <div id="note-title" class="placeholder">Kliknij węzeł drzewa<br>aby zobaczyć notatkę</div>
-    </div>
-    <div id="panel-body">
-      <div id="note-content"></div>
-    </div>
-    <div id="panel-links" style="display:none">
-      <div class="label">POWIĄZANE</div>
-      <div id="links-chips"></div>
-    </div>
+  <div id="sheet-body"><div id="sheet-content" class="note-md"></div></div>
+  <div id="sheet-links-wrap" style="display:none">
+    <div class="panel-label">POWIĄZANE</div>
+    <div id="sheet-chips" class="chips"></div>
   </div>
 </div>
 
 <script>
-// ================================================================
-// DANE PRZYKŁADOWYCH NOTATEK (format Obsidian)
-// Możesz zastąpić je swoimi plikami .md
-// ================================================================
-const EXAMPLE_NOTES_MD = {
-  "Wiedza": `# Wiedza\n\nCentralny węzeł mojej bazy wiedzy.\n\n## Główne obszary\n\n- [[Nauka]] — nauki ścisłe i przyrodnicze\n- [[Technologia]] — nowoczesne narzędzia i systemy\n- [[Sztuka]] — kultura, muzyka i malarstwo\n\n> "Nie wystarczy wiedzieć — trzeba też stosować." — Goethe`,
-  "Nauka": `# Nauka\n\nSystematyczne poznawanie świata przez obserwację i eksperyment.\n\n## Kluczowe dyscypliny\n\n- [[Matematyka]] — język nauki\n- [[Fizyka]] — fundamenty przyrody\n\n## Metoda naukowa\n\nObserwacja → Hipoteza → Eksperyment → Teoria`,
-  "Matematyka": `# Matematyka\n\n*Królowa nauk* — dostarcza języka dla wszystkich innych dyscyplin.\n\n## Działy\n\n- [[Algebra]] — struktury i operacje\n- [[Geometria]] — kształty i przestrzeń\n\nMatematyka uczy **precyzyjnego myślenia** i dowodzenia twierdzeń.`,
-  "Algebra": `# Algebra\n\nDział matematyki zajmujący się strukturami abstrakcyjnymi.\n\n## Kluczowe pojęcia\n\n- Równania liniowe i kwadratowe\n- Macierze i wyznaczniki\n- Przestrzenie wektorowe\n\n**Wzór kwadratowy:** x = (-b ± √(b²-4ac)) / 2a`,
-  "Geometria": `# Geometria\n\nNauka o kształtach, rozmiarach i wzajemnym położeniu figur.\n\n## Rodzaje\n\n- **Euklidesowa** — płaska geometria klasyczna\n- **Różniczkowa** — krzywizna przestrzeni\n\n**Twierdzenie Pitagorasa:** a² + b² = c²`,
-  "Fizyka": `# Fizyka\n\nNauka o fundamentalnych prawach rządzących Wszechświatem.\n\n## Główne działy\n\n- [[Mechanika]] — ruch i siły\n- [[Optyka]] — światło i fale\n\n## Wielkie teorie\n\nNewton, Maxwell, Einstein, Heisenberg.`,
-  "Mechanika": `# Mechanika\n\nDział fizyki badający ruch ciał i działające na nie siły.\n\n## Trzy prawa Newtona\n\n1. Zasada bezwładności\n2. F = m·a\n3. Akcja = Reakcja\n\nNa poziomie subatomowym rządzi **mechanika kwantowa**.`,
-  "Optyka": `# Optyka\n\nBadanie natury światła i jego oddziaływania z materią.\n\n## Zjawiska\n\n- Odbicie i załamanie\n- Dyfrakcja i interferencja\n- Polaryzacja\n\n**Zasada Fermata:** Światło wybiera ścieżkę minimalnego czasu.`,
-  "Technologia": `# Technologia\n\nPraktyczne zastosowanie wiedzy naukowej do tworzenia narzędzi i systemów.\n\n## Obszary\n\n- [[Programowanie]] — tworzenie oprogramowania\n- [[Sieci]] — komunikacja i infrastruktura\n\nKażda technologia niesie **odpowiedzialność** za skutki społeczne.`,
-  "Programowanie": `# Programowanie\n\nSztuka komunikowania instrukcji komputerowi w sposób precyzyjny i elegancki.\n\n## Języki\n\n- [[Python]] — prostota i wszechstronność\n- [[JavaScript]] — interaktywność w przeglądarce\n\n## Paradygmaty\n\nObiektowy, funkcyjny, deklaratywny — każdy ma swoje miejsce.`,
-  "Python": `# Python\n\nJęzyk wysokiego poziomu, stworzony z myślą o czytelności.\n\n\`\`\`python\ndef powitanie(imie):\n    return f"Cześć, {imie}!"\n\`\`\`\n\n## Zastosowania\n\n- Analiza danych (pandas, numpy)\n- Uczenie maszynowe (PyTorch)\n- Automatyzacja skryptów\n\n*"Powinien istnieć jeden oczywisty sposób na zrobienie tego."*`,
-  "JavaScript": `# JavaScript\n\nJęzyk przeglądarek, dziś używany też po stronie serwera.\n\n\`\`\`javascript\nconst powitanie = (imie) => \`Cześć, \${imie}!\`;\n\`\`\`\n\n## Ekosystem\n\n- React, Vue, Angular — frameworki UI\n- Node.js — backend\n- TypeScript — statyczne typowanie`,
-  "Sieci": `# Sieci komputerowe\n\nSystemy umożliwiające komunikację między urządzeniami.\n\n## Tematy\n\n- [[Internet]] — globalna sieć sieci\n- [[Protokoly]] — języki komunikacji\n\n## Model OSI\n\n7 warstw od fizycznej do aplikacji.`,
-  "Internet": `# Internet\n\nGlobalna sieć łącząca miliardy urządzeń.\n\n## Historia\n\n- 1969 — ARPANET\n- 1991 — WWW (Tim Berners-Lee)\n- 2020s — AI, IoT, Web3\n\nPonad **5 miliardów** użytkowników na świecie.`,
-  "Protokoly": `# Protokoły sieciowe\n\nZestawy reguł umożliwiające komunikację w sieci.\n\n## Kluczowe\n\n- **TCP** — niezawodna transmisja\n- **UDP** — szybka, bez gwarancji\n- **HTTP/S** — strony WWW\n- **DNS** — tłumaczenie nazw na IP\n- **WebSocket** — komunikacja dwukierunkowa`,
-  "Sztuka": `# Sztuka\n\nTwórcza ekspresja ludzkich doświadczeń, emocji i idei.\n\n## Dziedziny\n\n- [[Muzyka]] — sztuka dźwięku\n- [[Malarstwo]] — sztuka wizualna\n\n> "Każde dziecko jest artystą." — Picasso`,
-  "Muzyka": `# Muzyka\n\nZorganizowany dźwięk tworzący emocjonalne doświadczenie.\n\n## Zagadnienia\n\n- [[Teoria-Muzyki]] — fundamenty\n- [[Instrumenty]] — narzędzia muzyka\n\n## Muzyka a mózg\n\nAktywuje wiele regionów jednocześnie, poprawia pamięć i redukuje stres.`,
-  "Teoria-Muzyki": `# Teoria muzyki\n\nNaukowa analiza systemu muzycznego.\n\n## Fundamenty\n\n- Nuty i skale (durowa, molowa)\n- Rytm i metrum (3/4, 4/4)\n- Harmonia i akordy\n- Kontrapunkt\n\nTeoretyk muzyki to ten, kto wie **dlaczego** coś brzmi dobrze.`,
-  "Instrumenty": `# Instrumenty muzyczne\n\nUrządzenia do wydobywania dźwięków muzycznych.\n\n## Klasyfikacja\n\n- **Chordofony** — struny (gitara, skrzypce)\n- **Aerofony** — powietrze (flet, trąbka)\n- **Membranofony** — membrany (bębny)\n- **Idiofony** — materiał (ksylofon)\n\n**Do nauki:** gitara akustyczna lub ukulele.`,
-  "Malarstwo": `# Malarstwo\n\nSztuka tworzenia obrazów za pomocą pigmentów na płaszczyźnie.\n\n## Zagadnienia\n\n- [[Techniki]] — sposoby malowania\n- [[Historia-Sztuki]] — ewolucja przez wieki\n\nWielcy mistrzowie: da Vinci, Rembrandt, Picasso, Kandinsky.`,
-  "Techniki": `# Techniki malarskie\n\nRóżne metody nakładania pigmentów.\n\n## Główne techniki\n\n- **Olej** — głęboka kolorystyka\n- **Akwarela** — transparentna\n- **Akryl** — szybkoschnący\n- **Fresk** — na mokrym tynku\n\n**Impasto** — gęsta farba szpachlą. Van Gogh był mistrzem.`,
-  "Historia-Sztuki": `# Historia sztuki\n\nKronologiczny przegląd stylów artystycznych.\n\n## Okresy\n\n- Renesans — perspektywa, humanizm\n- Barok — dramatyzm, Rembrandt\n- Impresjonizm — światło, Monet\n- Kubizm — wielość perspektyw, Picasso\n- Abstrakcja — Kandinsky\n\nMuzea: Luwr, MoMA, Tate Modern.`
+// ════════════════════════════════════════════════════════════════
+//  DANE PRZYKŁADOWYCH NOTATEK
+// ════════════════════════════════════════════════════════════════
+const EXAMPLE = {
+  "Wiedza":        `# Wiedza\n\nCentralny węzeł mojej bazy wiedzy.\n\n## Obszary\n\n- [[Nauka]] — nauki ścisłe\n- [[Technologia]] — nowoczesne narzędzia\n- [[Sztuka]] — kultura i twórczość\n\n> "Nie wystarczy wiedzieć — trzeba też stosować." — Goethe`,
+  "Nauka":         `# Nauka\n\nSystematyczne poznawanie świata przez obserwację i eksperyment.\n\n## Dyscypliny\n\n- [[Matematyka]] — język nauki\n- [[Fizyka]] — fundamenty przyrody\n\nObserwacja → Hipoteza → Eksperyment → Teoria`,
+  "Matematyka":    `# Matematyka\n\n*Królowa nauk* — dostarcza języka dla wszystkich dyscyplin.\n\n## Działy\n\n- [[Algebra]] — struktury i operacje\n- [[Geometria]] — kształty i przestrzeń\n\nMatematyka uczy **precyzyjnego myślenia**.`,
+  "Algebra":       `# Algebra\n\nStruktura abstrakcyjna: grupy, pierścienie, ciała.\n\n**Wzór kwadratowy:**\n\n\`\`\`\nx = (-b ± √(b²-4ac)) / 2a\n\`\`\`\n\nZastosowania: kryptografia, grafika 3D, ML.`,
+  "Geometria":     `# Geometria\n\nNauka o kształtach i przestrzeni.\n\n## Rodzaje\n- Euklidesowa — płaska, klasyczna\n- Różniczkowa — krzywizna przestrzeni\n\n**Pitagoras:** a² + b² = c²`,
+  "Fizyka":        `# Fizyka\n\nFundamentalne prawa Wszechświata.\n\n## Działy\n\n- [[Mechanika]] — ruch i siły\n- [[Optyka]] — światło i fale\n\nNewton, Maxwell, Einstein, Heisenberg.`,
+  "Mechanika":     `# Mechanika\n\n## Prawa Newtona\n\n1. Zasada bezwładności\n2. **F = m·a**\n3. Akcja = Reakcja\n\nNa poziomie kwantowym klasyczna mechanika ustępuje **mechanice kwantowej**.`,
+  "Optyka":        `# Optyka\n\nBadanie natury światła.\n\n## Zjawiska\n- Odbicie i załamanie\n- Dyfrakcja i interferencja\n- Polaryzacja\n\n**Zasada Fermata:** Światło wybiera ścieżkę minimalnego czasu.`,
+  "Technologia":   `# Technologia\n\nPraktyczne zastosowanie nauki.\n\n## Obszary\n\n- [[Programowanie]] — tworzenie oprogramowania\n- [[Sieci]] — komunikacja i infrastruktura\n\nKażda technologia niesie **odpowiedzialność**.`,
+  "Programowanie": `# Programowanie\n\nSztuka pisania kodu.\n\n## Języki\n\n- [[Python]] — prostota i wszechstronność\n- [[JavaScript]] — interaktywność w przeglądarce\n\n## Paradygmaty\n\nOOP, funkcyjny, deklaratywny.`,
+  "Python":        `# Python\n\nJęzyk wysokiego poziomu — czytelność przede wszystkim.\n\n\`\`\`python\ndef hello(imie):\n    return f"Cześć, {imie}!"\n\`\`\`\n\n**Zastosowania:** dane, ML, automatyzacja.\n\n*"Powinien istnieć jeden oczywisty sposób."*`,
+  "JavaScript":    `# JavaScript\n\nJęzyk przeglądarek i serwerów.\n\n\`\`\`javascript\nconst hi = (n) => \`Cześć, \${n}!\`;\n\`\`\`\n\n**Ekosystem:** React, Node.js, TypeScript.`,
+  "Sieci":         `# Sieci komputerowe\n\nKomunikacja między urządzeniami.\n\n## Tematy\n\n- [[Internet]] — globalna sieć\n- [[Protokoly]] — języki komunikacji\n\n**Model OSI:** 7 warstw od fizycznej do aplikacji.`,
+  "Internet":      `# Internet\n\nGlobalna sieć sieci.\n\n## Historia\n- 1969 — ARPANET\n- 1991 — WWW (Tim Berners-Lee)\n- 2020s — AI, IoT, Web3\n\nPonad **5 miliardów** użytkowników.`,
+  "Protokoly":     `# Protokoły\n\n## Kluczowe\n| Protokół | Użycie |\n|---|---|\n| TCP | niezawodna transmisja |\n| UDP | szybka, bez gwarancji |\n| HTTP/S | strony WWW |\n| DNS | nazwy → IP |\n| WebSocket | dwukierunkowa |\n`,
+  "Sztuka":        `# Sztuka\n\nTwórcza ekspresja ludzkich doświadczeń.\n\n## Dziedziny\n\n- [[Muzyka]] — sztuka dźwięku\n- [[Malarstwo]] — sztuka wizualna\n\n> "Każde dziecko jest artystą." — Picasso`,
+  "Muzyka":        `# Muzyka\n\nZorganizowany dźwięk tworzący emocje.\n\n## Zagadnienia\n\n- [[Teoria-Muzyki]] — fundamenty\n- [[Instrumenty]] — narzędzia muzyka\n\nMuzyka poprawia pamięć i redukuje stres.`,
+  "Teoria-Muzyki": `# Teoria muzyki\n\n## Fundamenty\n- Nuty i skale (durowa, molowa)\n- Rytm i metrum (3/4, 4/4)\n- Harmonia i akordy\n- Kontrapunkt — Bach był mistrzem\n\nTeoria to mapa — nie zastępuje grania.`,
+  "Instrumenty":   `# Instrumenty\n\n## Klasyfikacja\n- **Chordofony** — struny (gitara, skrzypce)\n- **Aerofony** — powietrze (flet, trąbka)\n- **Membranofony** — membrany (bębny)\n\n*Na start:* gitara akustyczna lub ukulele.`,
+  "Malarstwo":     `# Malarstwo\n\nPigmenty na płaszczyźnie — od jaskiń po galerie.\n\n## Tematy\n\n- [[Techniki]] — sposoby malowania\n- [[Historia-Sztuki]] — ewolucja stylów\n\nda Vinci, Rembrandt, Picasso, Kandinsky.`,
+  "Techniki":      `# Techniki malarskie\n\n| Technika | Cecha |\n|---|---|\n| Olej | głęboka kolorystyka |\n| Akwarela | transparentna |\n| Akryl | szybkoschnący |\n| Fresk | na mokrym tynku |\n\n**Impasto** — gęsta farba szpachlą. Van Gogh.`,
+  "Historia-Sztuki": `# Historia sztuki\n\n## Okresy\n- **Renesans** — perspektywa, da Vinci\n- **Barok** — dramatyzm, Rembrandt\n- **Impresjonizm** — światło, Monet\n- **Kubizm** — wielość perspektyw, Picasso\n- **Abstrakcja** — Kandinsky\n\nMuzea: Luwr, MoMA, Tate Modern.`
 };
 
-// ================================================================
-// PARSER OBSIDIAN WIKI-LINKÓW
-// ================================================================
-function parseObsidianNote(filename, content) {
-  const links = [];
-  const regex = /\[\[([^\]|#]+?)(?:\|[^\]]*)?\]\]/g;
-  let m;
-  while ((m = regex.exec(content)) !== null) {
-    const target = m[1].trim();
-    if (!links.includes(target)) links.push(target);
-  }
-  return { id: filename, content, links };
-}
-
-function parseAllNotes(mdMap) {
+// ════════════════════════════════════════════════════════════════
+//  PARSER OBSIDIAN
+// ════════════════════════════════════════════════════════════════
+function parseNotes(mdMap) {
   const notes = {};
   for (const [name, content] of Object.entries(mdMap)) {
-    notes[name] = parseObsidianNote(name, content);
+    const links = [];
+    const re = /\[\[([^\]|#]+?)(?:\|[^\]]*)?\]\]/g;
+    let m;
+    while ((m = re.exec(content)) !== null) {
+      const t = m[1].trim();
+      if (!links.includes(t)) links.push(t);
+    }
+    notes[name] = { content, links };
   }
-  // Resolve root: node with most incoming OR just pick first / "index"
   return notes;
 }
 
-// Find the root: node not referenced by others, or with most outgoing links
 function findRoot(notes) {
-  const allLinked = new Set();
-  for (const note of Object.values(notes)) {
-    note.links.forEach(l => allLinked.add(l));
-  }
-  // Nodes not referenced by anyone are candidates for root
-  const candidates = Object.keys(notes).filter(id => !allLinked.has(id));
+  const linked = new Set();
+  Object.values(notes).forEach(n => n.links.forEach(l => linked.add(l)));
+  const candidates = Object.keys(notes).filter(id => !linked.has(id));
   if (candidates.length === 1) return candidates[0];
-  // Pick node with most links
-  let best = null, bestCount = -1;
-  for (const [id, note] of Object.entries(notes)) {
-    if (note.links.length > bestCount) { best = id; bestCount = note.links.length; }
-  }
-  return best;
+  return Object.entries(notes).sort((a,b) => b[1].links.length - a[1].links.length)[0]?.[0];
 }
 
-// ================================================================
-// TREE BUILDER (BFS to avoid cycles)
-// ================================================================
 function buildTree(notes, rootId) {
   const visited = new Set();
   function build(id) {
-    if (visited.has(id)) return null;
+    if (visited.has(id) || !notes[id]) return null;
     visited.add(id);
-    const note = notes[id];
-    if (!note) return null;
-    const children = note.links.map(l => build(l)).filter(Boolean);
-    return { id, name: id.replace(/-/g, ' '), content: note.content, links: note.links, children };
+    const children = notes[id].links.map(build).filter(Boolean);
+    return { id, name: id.replace(/-/g,' '), content: notes[id].content, links: notes[id].links, children };
   }
   return build(rootId);
 }
 
-// ================================================================
-// LAYOUT — organic upward tree
-// ================================================================
-function layoutTree(node, x, y, angle, length, depth) {
-  node.x = x; node.y = y;
-  node.angle = angle; node.depth = depth;
-  node.branchLength = length;
-  node.isLeaf = node.children.length === 0;
-
+// ════════════════════════════════════════════════════════════════
+//  LAYOUT + FIT
+// ════════════════════════════════════════════════════════════════
+function layoutTree(node, x, y, angle, len, depth) {
+  node.x = x; node.y = y; node.angle = angle;
+  node.depth = depth; node.isLeaf = node.children.length === 0;
   const n = node.children.length;
-  if (n === 0) return;
-
-  const spreads = [1.5, 1.1, 0.9, 0.7, 0.55, 0.45];
-  const spread = spreads[Math.min(depth, spreads.length - 1)];
-  const childLength = length * 0.68;
-
-  node.children.forEach((child, i) => {
+  if (!n) return;
+  const spreads = [1.45, 1.1, 0.85, 0.65, 0.5, 0.4];
+  const sp = spreads[Math.min(depth, spreads.length - 1)];
+  node.children.forEach((c, i) => {
     const t = n === 1 ? 0 : (i / (n - 1) - 0.5);
-    const childAngle = angle + t * spread;
-    layoutTree(child,
-      x + Math.sin(childAngle) * length,
-      y - Math.cos(childAngle) * length,
-      childAngle, childLength, depth + 1
-    );
+    const a = angle + t * sp;
+    layoutTree(c, x + Math.sin(a) * len, y - Math.cos(a) * len, a, len * 0.69, depth + 1);
   });
 }
 
-// ================================================================
-// HELPERS
-// ================================================================
-function lerp(a, b, t) { return a + (b - a) * t; }
-function lerp2(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) }; }
-
-function splitBezier(p0, p1, p2, p3, t) {
-  t = Math.max(0, Math.min(1, t));
-  const p01 = lerp2(p0, p1, t), p12 = lerp2(p1, p2, t), p23 = lerp2(p2, p3, t);
-  const p012 = lerp2(p01, p12, t), p123 = lerp2(p12, p23, t);
-  const p0123 = lerp2(p012, p123, t);
-  return [p0, p01, p012, p0123];
+function collectNodes(node, out) {
+  out.push(node);
+  node.children.forEach(c => collectNodes(c, out));
 }
 
-function getBranchColor(depth) {
-  const palette = [
-    [15, 30, 18],  // trunk: very dark brown
-    [20, 35, 24],
-    [28, 38, 28],
-    [80, 38, 26],  // olive
-    [110, 42, 30], // dark green
-    [125, 50, 36], // green
-  ];
-  const [h, s, l] = palette[Math.min(depth, palette.length - 1)];
-  return `hsl(${h},${s}%,${l}%)`;
+function fitTree(nodes, root, W, H) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  nodes.forEach(n => { x0=Math.min(x0,n.x); x1=Math.max(x1,n.x); y0=Math.min(y0,n.y); y1=Math.max(y1,n.y); });
+  const pad = 28, groundY = H * 0.87;
+  const scaleX = (W - pad*2) / (x1 - x0 || 1);
+  const scaleY = (groundY - pad) / (y0 - y1 || 1) * -1; // y1 < y0 (top is more negative)
+  // Actually tree goes upward so yMin=top (most negative), yMax=0 (root)
+  const treeH = Math.abs(y0); // root is at 0,0, leaves at negative y
+  const treeW = x1 - x0;
+  const scale = Math.min((W - pad*2) / (treeW || 1), (groundY - pad * 3) / (treeH || 1));
+  const rx = root.x, ry = root.y;
+  nodes.forEach(n => {
+    n.x = W / 2 + (n.x - rx) * scale;
+    n.y = groundY + (n.y - ry) * scale;
+  });
 }
 
-function getBranchWidth(depth) {
-  return Math.max(1.2, 15 * Math.pow(0.58, depth));
+// ════════════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════════════
+function lerp(a,b,t){ return a+(b-a)*t; }
+function lp(a,b,t){ return {x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t)}; }
+
+function splitBez(p0,p1,p2,p3,t){
+  t = Math.max(0,Math.min(1,t));
+  const p01=lp(p0,p1,t),p12=lp(p1,p2,t),p23=lp(p2,p3,t);
+  const p012=lp(p01,p12,t),p123=lp(p12,p23,t);
+  return [p0,p01,p012,lp(p012,p123,t)];
 }
 
-function seededRand(seed) {
-  let s = seed;
-  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
-}
+function seededRng(s){ return ()=>{ s=(s*16807)%2147483647; return (s-1)/2147483646; }; }
 
-function getLeafColors(idx) {
-  const sets = [
-    ['#2d6a4f','#40916c','#52b788'],
-    ['#386641','#6a994e','#a7c957'],
-    ['#1b4332','#2d6a4f','#74c69d'],
-    ['#344e41','#3a5a40','#588157'],
-    ['#1d3461','#1f487e','#376996'],
-  ];
-  return sets[idx % sets.length];
-}
+// Branch colors — ink/sepia tones graduating to olive-green
+const BCOLS = ['#2a1a0a','#4a2e16','#5a3a1e','#7a5830','#7a7028','#4a6a28'];
+function branchColor(d){ return BCOLS[Math.min(d,BCOLS.length-1)]; }
+function branchWidth(d){ return Math.max(1.0, 13*Math.pow(0.6,d)); }
 
-// ================================================================
-// CANVAS + STATE
-// ================================================================
+// Leaf color sets (pencil sketch greens)
+const LEAFCOLS = [
+  ['rgba(50,80,40,0.15)','rgba(42,72,32,0.7)'],
+  ['rgba(40,90,35,0.15)','rgba(38,80,30,0.7)'],
+  ['rgba(60,85,30,0.15)','rgba(52,78,26,0.7)'],
+  ['rgba(35,75,50,0.15)','rgba(30,68,42,0.7)'],
+  ['rgba(65,80,25,0.15)','rgba(58,72,22,0.7)'],
+];
+
+// ════════════════════════════════════════════════════════════════
+//  CANVAS
+// ════════════════════════════════════════════════════════════════
 const canvas = document.getElementById('tree-canvas');
 const ctx = canvas.getContext('2d');
 
-let treeRoot = null, allNodes = [], allBranches = [];
-let activeBranches = [], completedBranches = [], leaves = [];
-let hoveredNode = null, selectedNode = null;
-let leafCounter = 0, animFrameId = null;
-let currentNotes = parseAllNotes(EXAMPLE_NOTES_MD);
-
-function resize() {
+function resize(){
   const c = document.getElementById('tree-container');
   canvas.width = c.clientWidth;
   canvas.height = c.clientHeight;
 }
-
-window.addEventListener('resize', () => { resize(); restartAnimation(); });
+window.addEventListener('resize', ()=>{ resize(); restartAnim(); });
 resize();
 
-// ================================================================
-// BRANCH LIST BUILDER
-// ================================================================
-function buildBranchList(node, list) {
-  allNodes.push(node);
-  node.children.forEach(child => {
-    const dx = child.x - node.x, dy = child.y - node.y;
-    const len = Math.sqrt(dx*dx + dy*dy) || 1;
-    const px = -dy / len, py = dx / len;
-    const rng = seededRand(node.id.charCodeAt(0) * 31 + child.id.charCodeAt(0));
-    const offs = (rng() - 0.5) * len * 0.18;
-    list.push({
-      parent: node, child,
-      cp1: { x: node.x + dx*0.2 + px*offs*0.5, y: node.y + dy*0.2 + py*offs*0.5 },
-      cp2: { x: node.x + dx*0.75 + px*offs, y: node.y + dy*0.75 + py*offs },
-      depth: child.depth, progress: 0, done: false, active: false
-    });
-    buildBranchList(child, list);
+// ════════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════════
+let treeRoot=null, allNodes=[], allBranches=[];
+let activeBranches=[], doneBranches=[], leaves=[];
+let hovered=null, selected=null, leafIdx=0, rafId=null;
+let currentNotes = parseNotes(EXAMPLE);
+
+// ════════════════════════════════════════════════════════════════
+//  BUILD BRANCHES (after fit)
+// ════════════════════════════════════════════════════════════════
+function buildBranches(node, list){
+  node.children.forEach(child=>{
+    const dx=child.x-node.x, dy=child.y-node.y;
+    const len=Math.hypot(dx,dy)||1;
+    const px=-dy/len, py=dx/len;
+    const rng = seededRng(node.id.charCodeAt(0)*137 + child.id.charCodeAt(0)*31);
+    const jit = Math.max(0.5, 3.5 - child.depth*0.6);
+    // Main bezier
+    const cp1 = { x: node.x+dx*0.22+px*(rng()-0.5)*jit*3, y: node.y+dy*0.22+py*(rng()-0.5)*jit*3 };
+    const cp2 = { x: node.x+dx*0.75+px*(rng()-0.5)*jit*4, y: node.y+dy*0.75+py*(rng()-0.5)*jit*4 };
+    // Rough "sketch" bezier (second pass)
+    const r2 = seededRng(node.id.charCodeAt(0)*53 + child.id.charCodeAt(0)*97 + 17);
+    const rcp1 = { x: cp1.x+(r2()-0.5)*jit*2.5, y: cp1.y+(r2()-0.5)*jit*2.5 };
+    const rcp2 = { x: cp2.x+(r2()-0.5)*jit*3,   y: cp2.y+(r2()-0.5)*jit*3 };
+    list.push({ parent:node, child, cp1, cp2, rcp1, rcp2, depth:child.depth, progress:0, done:false, active:false });
+    buildBranches(child, list);
   });
 }
 
-// ================================================================
-// INIT ANIMATION
-// ================================================================
-function initAnimation() {
+// Leaf rng stored per leaf
+function makeLeafRng(node, idx){
+  return seededRng(node.id.charCodeAt(0)*41 + idx*7 + 3);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════
+function initAnim(){
   const rootId = findRoot(currentNotes);
   treeRoot = buildTree(currentNotes, rootId);
-  if (!treeRoot) return;
+  if(!treeRoot) return;
 
-  const W = canvas.width, H = canvas.height;
-  const trunkLen = Math.min(H * 0.26, 220);
-  layoutTree(treeRoot, W / 2, H * 0.88, 0, trunkLen, 0);
+  const W=canvas.width, H=canvas.height;
+  layoutTree(treeRoot, 0, 0, 0, Math.min(H*0.28, 210), 0);
+  allNodes=[]; collectNodes(treeRoot, allNodes);
+  fitTree(allNodes, treeRoot, W, H);
 
-  allNodes = []; allBranches = [];
-  buildBranchList(treeRoot, allBranches);
-  completedBranches = []; activeBranches = []; leaves = [];
-  leafCounter = 0;
+  allBranches=[]; buildBranches(treeRoot, allBranches);
+  activeBranches=[]; doneBranches=[]; leaves=[]; leafIdx=0;
+  allNodes.forEach(n=>{ n.lo = n.depth===0 ? 1 : 0; }); // label opacity
 
-  // Activate root's children branches immediately
-  allBranches.filter(b => b.parent.id === treeRoot.id).forEach(b => {
-    b.active = true; activeBranches.push(b);
-  });
-
-  // Set label opacity for all nodes (fades in after branch arrives)
-  allNodes.forEach(n => { n.labelOpacity = n.id === treeRoot.id ? 1 : 0; });
-
+  // Start root's children
+  allBranches.filter(b=>b.parent.id===treeRoot.id).forEach(b=>{ b.active=true; activeBranches.push(b); });
   updateProgress();
 }
 
-// ================================================================
-// DRAWING
-// ================================================================
-function drawBackground() {
-  const W = canvas.width, H = canvas.height;
+// ════════════════════════════════════════════════════════════════
+//  DRAWING — PAPER BACKGROUND
+// ════════════════════════════════════════════════════════════════
+function drawPaper(){
+  const W=canvas.width, H=canvas.height;
 
-  // Night sky gradient
-  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.85);
-  sky.addColorStop(0, '#060d1a');
-  sky.addColorStop(0.6, '#0d1b2a');
-  sky.addColorStop(1, '#0f2339');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // Paper gradient
+  const g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,   '#f5ead6');
+  g.addColorStop(0.45,'#ede2ca');
+  g.addColorStop(1,   '#e6d8bc');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 
-  // Stars — deterministic positions
-  const starData = [
-    [0.08,0.06],[0.19,0.11],[0.31,0.04],[0.42,0.09],[0.53,0.03],
-    [0.64,0.13],[0.75,0.07],[0.88,0.04],[0.93,0.16],[0.11,0.22],
-    [0.27,0.19],[0.38,0.27],[0.49,0.15],[0.61,0.24],[0.72,0.18],
-    [0.84,0.28],[0.05,0.33],[0.22,0.38],[0.45,0.35],[0.58,0.31],
-    [0.77,0.36],[0.91,0.29],[0.15,0.45],[0.33,0.42],[0.66,0.40],
-  ];
-  starData.forEach(([sx, sy], i) => {
-    const size = i % 5 === 0 ? 1.5 : 1;
-    const alpha = 0.4 + (i % 3) * 0.2;
+  // Subtle ruled lines (notebook)
+  ctx.strokeStyle='rgba(150,120,75,0.06)';
+  ctx.lineWidth=0.5;
+  for(let y=22;y<H;y+=22){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  // Left margin red line (notebook style, very faint)
+  const mx = Math.min(44, W*0.09);
+  ctx.strokeStyle='rgba(200,100,80,0.08)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(mx,0); ctx.lineTo(mx,H); ctx.stroke();
+
+  // Ground shadow
+  const gg = ctx.createLinearGradient(0, H*0.85, 0, H);
+  gg.addColorStop(0,'rgba(80,55,20,0)');
+  gg.addColorStop(1,'rgba(80,55,20,0.12)');
+  ctx.fillStyle=gg; ctx.fillRect(0,H*0.85,W,H*0.15);
+
+  // Vignette
+  const vg = ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.max(W,H)*0.8);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(60,38,16,0.14)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+
+  // Trunk stub (underground)
+  if(treeRoot){
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(sx * W, sy * H, size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.fill();
-  });
-
-  // Moon
-  const mx = W * 0.88, my = H * 0.1, mr = 28;
-  const moonGlow = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3);
-  moonGlow.addColorStop(0, 'rgba(220,230,255,0.12)');
-  moonGlow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = moonGlow; ctx.fillRect(mx-mr*3, my-mr*3, mr*6, mr*6);
-  ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI*2);
-  ctx.fillStyle = '#d8e4f0'; ctx.fill();
-  ctx.beginPath(); ctx.arc(mx+8, my-4, mr*0.85, 0, Math.PI*2);
-  ctx.fillStyle = '#101c2e'; ctx.fill();
-
-  // Ground
-  const ground = ctx.createLinearGradient(0, H*0.84, 0, H);
-  ground.addColorStop(0, 'rgba(0,0,0,0)');
-  ground.addColorStop(0.15, '#0e2210');
-  ground.addColorStop(1, '#071408');
-  ctx.fillStyle = ground; ctx.fillRect(0, H*0.84, W, H*0.16);
-
-  // Ground fog/glow near trunk
-  if (treeRoot) {
-    const fog = ctx.createRadialGradient(treeRoot.x, H, 0, treeRoot.x, H, W*0.25);
-    fog.addColorStop(0, 'rgba(20,60,20,0.25)');
-    fog.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = fog; ctx.fillRect(0, H*0.75, W, H*0.25);
+    ctx.moveTo(treeRoot.x, H*0.97);
+    ctx.lineTo(treeRoot.x, treeRoot.y+4);
+    ctx.strokeStyle=branchColor(0);
+    ctx.lineWidth=branchWidth(0)*1.15;
+    ctx.lineCap='round'; ctx.stroke();
+    ctx.restore();
   }
 }
 
-function drawTrunk() {
-  if (!treeRoot) return;
-  const W = canvas.width, H = canvas.height;
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(treeRoot.x, H * 0.95);
-  ctx.lineTo(treeRoot.x, treeRoot.y);
-  ctx.strokeStyle = getBranchColor(0);
-  ctx.lineWidth = getBranchWidth(0) * 1.1;
-  ctx.lineCap = 'round';
-  ctx.stroke();
+// ════════════════════════════════════════════════════════════════
+//  DRAWING — BRANCH (sketchy double bezier)
+// ════════════════════════════════════════════════════════════════
+function drawBranch(b, progress){
+  if(progress<=0) return;
+  const p0={x:b.parent.x,y:b.parent.y}, p3={x:b.child.x,y:b.child.y};
+  const [,a1,a2,aE] = splitBez(p0,b.cp1,b.cp2,p3,progress);
+  const [,r1,r2,rE] = splitBez(p0,b.rcp1,b.rcp2,p3,progress);
+  const w=branchWidth(b.depth), col=branchColor(b.depth);
+
+  ctx.save(); ctx.lineCap='round';
+
+  // Main stroke
+  ctx.beginPath(); ctx.moveTo(p0.x,p0.y);
+  ctx.bezierCurveTo(a1.x,a1.y,a2.x,a2.y,aE.x,aE.y);
+  ctx.strokeStyle=col; ctx.lineWidth=w; ctx.stroke();
+
+  // Sketch secondary stroke (slightly offset, thin)
+  ctx.beginPath(); ctx.moveTo(p0.x,p0.y);
+  ctx.bezierCurveTo(r1.x,r1.y,r2.x,r2.y,rE.x,rE.y);
+  ctx.strokeStyle=col; ctx.lineWidth=w*0.28; ctx.globalAlpha=0.32; ctx.stroke();
+
   ctx.restore();
 }
 
-function drawBranchSegment(branch, progress) {
-  if (progress <= 0) return;
-  const p0 = { x: branch.parent.x, y: branch.parent.y };
-  const p3 = { x: branch.child.x, y: branch.child.y };
-  const [, p1, p2, end] = splitBezier(p0, branch.cp1, branch.cp2, p3, progress);
-
-  ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, end.x, end.y);
-  ctx.strokeStyle = getBranchColor(branch.depth);
-  ctx.lineWidth = getBranchWidth(branch.depth);
-  ctx.lineCap = 'round';
-  ctx.stroke();
-}
-
-function drawLeaf(leaf) {
-  if (leaf.scale <= 0) return;
-  const node = leaf.node;
-  const colors = getLeafColors(leaf.colorIdx);
-  const rng = seededRand(node.id.charCodeAt(0) + leaf.leafNum * 7);
+// ════════════════════════════════════════════════════════════════
+//  DRAWING — LEAF (pencil sketch style)
+// ════════════════════════════════════════════════════════════════
+function drawLeaf(leaf){
+  const {node,scale,ci,rng} = leaf;
+  if(scale<=0) return;
+  const [fill,stroke] = LEAFCOLS[ci];
 
   ctx.save();
-  ctx.translate(node.x, node.y);
+  ctx.translate(node.x,node.y);
   ctx.rotate(node.angle);
-  ctx.scale(leaf.scale, leaf.scale);
+  ctx.scale(scale,scale);
 
-  // Draw 3 leaves fanning out
-  const angles = [-0.55, 0, 0.55];
-  const sizes = [9, 12, 9];
-  angles.forEach((da, i) => {
+  // 3 leaves fanning
+  const fanA=[-0.52,0,0.52];
+  fanA.forEach(da=>{
     ctx.save();
-    ctx.rotate(da + (rng() - 0.5) * 0.3);
-    const sz = sizes[i] + rng() * 3;
+    ctx.rotate(da+(rng()-0.5)*0.18);
+    const sz = 8.5 + rng()*5;
 
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(-sz*0.35, -sz*0.45, -sz*0.3, -sz*0.9, 0, -sz*1.25);
-    ctx.bezierCurveTo(sz*0.3, -sz*0.9, sz*0.35, -sz*0.45, 0, 0);
+    ctx.moveTo(0,0);
+    ctx.bezierCurveTo(-sz*0.32,-sz*0.42,-sz*0.26,-sz*0.88,0,-sz*1.22);
+    ctx.bezierCurveTo( sz*0.26,-sz*0.88, sz*0.32,-sz*0.42,0,0);
+    ctx.fillStyle=fill; ctx.fill();
+    ctx.strokeStyle=stroke; ctx.lineWidth=0.75/scale; ctx.stroke();
 
-    const lg = ctx.createLinearGradient(0, 0, 0, -sz*1.25);
-    lg.addColorStop(0, colors[0]);
-    lg.addColorStop(0.5, colors[1]);
-    lg.addColorStop(1, colors[2]);
-    ctx.fillStyle = lg;
-    ctx.globalAlpha = 0.88;
-    ctx.fill();
-
-    // Leaf vein
-    ctx.globalAlpha = 0.4;
-    ctx.beginPath();
-    ctx.moveTo(0, -sz*0.1);
-    ctx.lineTo(0, -sz*1.1);
-    ctx.strokeStyle = 'rgba(0,60,0,0.6)';
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
+    // Vein
+    ctx.beginPath(); ctx.moveTo(0,-sz*0.08); ctx.lineTo(0,-sz*1.08);
+    ctx.strokeStyle='rgba(40,65,28,0.35)'; ctx.lineWidth=0.5/scale; ctx.stroke();
 
     ctx.restore();
   });
-
   ctx.restore();
 }
 
-function drawNodeDot(node) {
-  const isHov = hoveredNode && hoveredNode.id === node.id;
-  const isSel = selectedNode && selectedNode.id === node.id;
-  const r = node.depth === 0 ? 7 : (node.isLeaf ? 4 : 5);
-  const extra = isHov ? 2.5 : (isSel ? 3.5 : 0);
-
-  // Glow for selected
-  if (isSel) {
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, r + extra + 6, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(76,175,80,0.15)';
-    ctx.fill();
-  }
-
-  ctx.beginPath();
-  ctx.arc(node.x, node.y, r + extra, 0, Math.PI*2);
-  if (isSel) ctx.fillStyle = '#fff';
-  else if (isHov) ctx.fillStyle = '#c8e6c9';
-  else if (node.depth === 0) ctx.fillStyle = '#8d6e63';
-  else if (node.isLeaf) ctx.fillStyle = '#66bb6a';
-  else ctx.fillStyle = '#9e7b6b';
-  ctx.fill();
-
-  if (isSel || isHov) {
-    ctx.strokeStyle = '#4caf50';
-    ctx.lineWidth = isSel ? 2 : 1;
-    ctx.stroke();
-  }
-}
-
-function drawNodeLabel(node) {
-  if (!node.labelOpacity || node.labelOpacity <= 0) return;
-  const isSel = selectedNode && selectedNode.id === node.id;
-  const isHov = hoveredNode && hoveredNode.id === node.id;
-  const isRoot = node.depth === 0;
+// ════════════════════════════════════════════════════════════════
+//  DRAWING — NODE DOT (ink blot)
+// ════════════════════════════════════════════════════════════════
+function drawDot(node){
+  const isH=hovered?.id===node.id, isS=selected?.id===node.id;
+  const r = node.depth===0 ? 6.5 : (node.isLeaf ? 3.5 : 4.5);
 
   ctx.save();
-  ctx.globalAlpha = node.labelOpacity * (isRoot ? 1 : 0.85);
+  if(isS){
+    // Ochre glow ring
+    ctx.beginPath(); ctx.arc(node.x,node.y,r+6,0,Math.PI*2);
+    ctx.fillStyle='rgba(184,120,32,0.12)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(node.x,node.y,r+3,0,Math.PI*2);
+    ctx.strokeStyle='#b87820'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(node.x,node.y, r+(isH?1.5:0),0,Math.PI*2);
+  ctx.fillStyle = isS ? '#b87820' : (isH ? branchColor(2) : branchColor(Math.min(node.depth+1,5)));
+  ctx.fill();
+  ctx.restore();
+}
 
-  const fontSize = isRoot ? 13 : (node.isLeaf ? 10 : 11);
-  ctx.font = `${isRoot || isSel ? 'bold ' : ''}${fontSize}px Segoe UI, sans-serif`;
+// ════════════════════════════════════════════════════════════════
+//  DRAWING — LABEL (Caveat font, hand-written look)
+// ════════════════════════════════════════════════════════════════
+function drawLabel(node){
+  const op = node.lo || 0;
+  if(op<=0) return;
+  const isS=selected?.id===node.id, isH=hovered?.id===node.id;
+  const isRoot=node.depth===0;
+  const fs = isRoot ? 15 : (node.isLeaf ? 11.5 : 12.5);
+
+  ctx.save();
+  ctx.globalAlpha = op * (isRoot ? 1 : 0.82);
+  ctx.font=`${isS||isRoot?'700':'600'} ${fs}px Caveat, cursive`;
 
   const label = node.name;
   const tw = ctx.measureText(label).width;
 
-  // Position: above the node, offset by angle direction
-  const offX = Math.sin(node.angle) * 14;
-  const offY = -Math.cos(node.angle) * 14 - 4;
-  let lx = node.x + offX;
-  let ly = node.y + offY;
+  // Position: above node, leaning in branch direction
+  const offY = -(branchWidth(node.depth)/2 + 9);
+  let lx = node.x, ly = node.y + offY;
+  lx = Math.max(tw/2+6, Math.min(canvas.width-tw/2-6, lx));
+  ly = Math.max(fs+5, ly);
 
-  // Keep in bounds
-  lx = Math.max(tw/2 + 6, Math.min(canvas.width - tw/2 - 6, lx));
-  ly = Math.max(fontSize + 6, ly);
-
-  // Background pill
-  const padX = 6, padY = 3;
-  const bx = lx - tw/2 - padX, by = ly - fontSize - padY;
-  const bw = tw + padX*2, bh = fontSize + padY*2;
-
-  ctx.fillStyle = isSel ? 'rgba(20,50,20,0.85)' : 'rgba(5,12,22,0.7)';
-  roundRect(ctx, bx, by, bw, bh, 5);
-  ctx.fill();
-
-  if (isSel) {
-    ctx.strokeStyle = 'rgba(76,175,80,0.6)';
-    ctx.lineWidth = 1;
-    roundRect(ctx, bx, by, bw, bh, 5);
-    ctx.stroke();
-  }
-
-  ctx.fillStyle = isSel ? '#a5d6a7' : (isRoot ? '#e8f5e9' : '#cfd8dc');
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(label, lx, ly - padY/2);
-
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillStyle = isS ? '#8a5a0a' : (isH ? '#2a1a0e' : 'rgba(58,38,18,0.72)');
+  ctx.fillText(label, lx, ly);
   ctx.restore();
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x+w, y, x+w, y+h, r);
-  ctx.arcTo(x+w, y+h, x, y+h, r);
-  ctx.arcTo(x, y+h, x, y, r);
-  ctx.arcTo(x, y, x+w, y, r);
-  ctx.closePath();
-}
+// ════════════════════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ════════════════════════════════════════════════════════════════
+const BSPEED=0.024, LSPEED=0.032, LOPACITY=0.045;
 
-// ================================================================
-// ANIMATION LOOP
-// ================================================================
-const BRANCH_SPEED = 0.022;
-const LEAF_SPEED = 0.035;
-const LABEL_SPEED = 0.04;
-
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBackground();
-  drawTrunk();
+function animate(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawPaper();
 
   // Completed branches
-  completedBranches.forEach(b => drawBranchSegment(b, 1));
+  doneBranches.forEach(b=>drawBranch(b,1));
 
-  // Active branches — update + draw
-  const justDone = [];
-  activeBranches.forEach(b => {
-    b.progress = Math.min(1, b.progress + BRANCH_SPEED);
-    drawBranchSegment(b, b.progress);
-    if (b.progress >= 1 && !b.done) { b.done = true; justDone.push(b); }
+  // Active branches — advance + draw
+  const finished=[];
+  activeBranches.forEach(b=>{
+    b.progress=Math.min(1,b.progress+BSPEED);
+    drawBranch(b,b.progress);
+    if(b.progress>=1&&!b.done){ b.done=true; finished.push(b); }
   });
 
-  // Process newly finished branches
-  justDone.forEach(b => {
-    completedBranches.push(b);
-    activeBranches = activeBranches.filter(x => x !== b);
-
-    // Start children
-    const kids = allBranches.filter(x => x.parent.id === b.child.id && !x.active);
-    if (kids.length > 0) {
-      kids.forEach(k => { k.active = true; activeBranches.push(k); });
-    } else if (b.child.isLeaf) {
-      leaves.push({ node: b.child, scale: 0, colorIdx: leafCounter % 5, leafNum: leafCounter++ });
+  // Process finished
+  finished.forEach(b=>{
+    doneBranches.push(b);
+    activeBranches=activeBranches.filter(x=>x!==b);
+    const kids=allBranches.filter(x=>x.parent.id===b.child.id&&!x.active);
+    if(kids.length){
+      kids.forEach(k=>{ k.active=true; activeBranches.push(k); });
+    } else if(b.child.isLeaf){
+      const rng=makeLeafRng(b.child,leafIdx);
+      leaves.push({ node:b.child, scale:0, ci:leafIdx%5, rng });
+      leafIdx++;
     }
-    // Fade in label
-    b.child.labelOpacity = 0;
+    b.child.lo=0;
   });
 
   // Leaves
-  leaves.forEach(l => {
-    l.scale = Math.min(1, l.scale + LEAF_SPEED);
-    drawLeaf(l);
-  });
+  leaves.forEach(l=>{ l.scale=Math.min(1,l.scale+LSPEED); drawLeaf(l); });
 
-  // Visible node set
-  const vis = new Set(treeRoot ? [treeRoot.id] : []);
-  completedBranches.forEach(b => { vis.add(b.parent.id); vis.add(b.child.id); });
-  activeBranches.forEach(b => vis.add(b.parent.id));
+  // Visible nodes
+  const vis=new Set(treeRoot?[treeRoot.id]:[]);
+  doneBranches.forEach(b=>{ vis.add(b.parent.id); vis.add(b.child.id); });
+  activeBranches.forEach(b=>vis.add(b.parent.id));
 
-  // Update label opacities + draw nodes
-  allNodes.forEach(node => {
-    if (!vis.has(node.id)) return;
-    // Fade in label after branch arrives
-    if (vis.has(node.id) && node.id !== treeRoot?.id) {
-      node.labelOpacity = Math.min(1, (node.labelOpacity || 0) + LABEL_SPEED);
-    }
-    drawNodeDot(node);
-    drawNodeLabel(node);
+  allNodes.forEach(node=>{
+    if(!vis.has(node.id)) return;
+    if(node.depth!==0) node.lo=Math.min(1,(node.lo||0)+LOPACITY);
+    drawDot(node);
+    drawLabel(node);
   });
 
   updateProgress();
-  animFrameId = requestAnimationFrame(animate);
+  rafId=requestAnimationFrame(animate);
 }
 
-function updateProgress() {
-  const bar = document.getElementById('progress-bar');
-  const total = allBranches.length;
-  const done = completedBranches.length;
-  if (total === 0) { bar.style.opacity = '0'; return; }
-  if (done >= total) {
-    bar.style.opacity = '0';
-  } else {
-    bar.style.opacity = '1';
-    const pct = Math.round(done / total * 100);
-    bar.textContent = `Rośnie drzewo... ${pct}%  (${Object.keys(currentNotes).length} notatek)`;
-  }
+function updateProgress(){
+  const el=document.getElementById('progress');
+  const tot=allBranches.length, done=doneBranches.length;
+  if(tot===0||done>=tot){ el.style.opacity='0'; return; }
+  el.style.opacity='1';
+  el.textContent=`Rośnie drzewo… ${Math.round(done/tot*100)}%  ·  ${Object.keys(currentNotes).length} notatek`;
 }
 
-// ================================================================
-// INTERACTION
-// ================================================================
-function getVisibleNodes() {
-  const vis = new Set(treeRoot ? [treeRoot.id] : []);
-  completedBranches.forEach(b => { vis.add(b.parent.id); vis.add(b.child.id); });
-  activeBranches.forEach(b => vis.add(b.parent.id));
-  return vis;
+// ════════════════════════════════════════════════════════════════
+//  INTERACTION
+// ════════════════════════════════════════════════════════════════
+function visSet(){
+  const s=new Set(treeRoot?[treeRoot.id]:[]);
+  doneBranches.forEach(b=>{ s.add(b.parent.id); s.add(b.child.id); });
+  activeBranches.forEach(b=>s.add(b.parent.id));
+  return s;
 }
 
-function nodeAtPos(mx, my) {
-  const vis = getVisibleNodes();
-  let best = null, bestD = Infinity;
-  allNodes.forEach(node => {
-    if (!vis.has(node.id)) return;
-    const d = Math.hypot(node.x - mx, node.y - my);
-    const r = (node.depth === 0 ? 14 : (node.isLeaf ? 10 : 12));
-    if (d < r && d < bestD) { best = node; bestD = d; }
+function nodeAt(mx,my){
+  const vs=visSet(); let best=null,bd=Infinity;
+  allNodes.forEach(n=>{
+    if(!vs.has(n.id)) return;
+    const d=Math.hypot(n.x-mx,n.y-my);
+    const r=(n.depth===0?16:(n.isLeaf?12:14));
+    if(d<r&&d<bd){ best=n; bd=d; }
   });
   return best;
 }
 
-canvas.addEventListener('mousemove', e => {
-  const r = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / r.width, scaleY = canvas.height / r.height;
-  const mx = (e.clientX - r.left) * scaleX;
-  const my = (e.clientY - r.top) * scaleY;
-  hoveredNode = nodeAtPos(mx, my);
-  canvas.style.cursor = hoveredNode ? 'pointer' : 'default';
-  const tip = document.getElementById('tooltip');
-  if (hoveredNode) {
-    tip.style.display = 'block';
-    tip.style.left = (e.clientX + 14) + 'px';
-    tip.style.top = (e.clientY - 8) + 'px';
-    tip.textContent = hoveredNode.name + (hoveredNode.isLeaf ? ' 🍃' : '');
-  } else { tip.style.display = 'none'; }
+// Mouse
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  hovered=nodeAt((e.clientX-r.left)*(canvas.width/r.width),(e.clientY-r.top)*(canvas.height/r.height));
+  canvas.style.cursor=hovered?'pointer':'default';
+  const tip=document.getElementById('tooltip');
+  if(hovered){ tip.style.display='block'; tip.style.left=(e.clientX+13)+'px'; tip.style.top=(e.clientY-8)+'px'; tip.textContent=hovered.name; }
+  else tip.style.display='none';
+});
+canvas.addEventListener('mouseleave',()=>{ hovered=null; document.getElementById('tooltip').style.display='none'; });
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect();
+  const n=nodeAt((e.clientX-r.left)*(canvas.width/r.width),(e.clientY-r.top)*(canvas.height/r.height));
+  if(n){ selected=n; showNote(n); }
 });
 
-canvas.addEventListener('mouseleave', () => {
-  hoveredNode = null;
-  document.getElementById('tooltip').style.display = 'none';
-});
-
-canvas.addEventListener('click', e => {
-  const r = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / r.width, scaleY = canvas.height / r.height;
-  const node = nodeAtPos((e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleY);
-  if (node) { selectedNode = node; showNote(node); }
-});
-
-// ================================================================
-// NOTE PANEL
-// ================================================================
-function renderMarkdown(md) {
-  let html = md
-    // Code blocks first (before other replacements)
-    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
-      `<pre><code>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`)
-    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-    // Headers
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // Bold/italic
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Wiki links → clickable
-    .replace(/\[\[([^\]|#]+?)(?:\|([^\]]*))?\]\]/g, (_, target, alias) =>
-      `<span class="wiki-link" onclick="selectById('${target}')">${alias || target.replace(/-/g,' ')}</span>`)
-    // Blockquote
-    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-    // Checklist
-    .replace(/^- \[x\] (.+)$/gm, '<li style="color:#81c784">✓ $1</li>')
-    .replace(/^- \[ \] (.+)$/gm, '<li style="color:#666">☐ $1</li>')
-    // Unordered list
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    // Numbered list
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    // Wrap consecutive li items
-    .replace(/(<li[\s\S]*?<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
-    // Table (simple)
-    .replace(/^\|(.+)\|$/gm, (_, cells) => {
-      if (cells.includes('---')) return '';
-      const cols = cells.split('|').map(c => `<td>${c.trim()}</td>`).join('');
-      return `<tr>${cols}</tr>`;
-    })
-    .replace(/(<tr>[\s\S]*?<\/tr>\n?)+/g, m => `<table>${m}</table>`)
-    // Paragraphs
-    .replace(/\n\n+/g, '\n</p><p>\n')
-    .replace(/^(?!<[htubpq]|<\/|$)/, '<p>');
-  return '<p>' + html + '</p>';
-}
-
-function showNote(node) {
-  const note = currentNotes[node.id];
-  document.getElementById('note-title').textContent = node.name;
-  document.getElementById('note-title').classList.remove('placeholder');
-  document.getElementById('note-content').innerHTML = renderMarkdown(node.content || '');
-
-  const linksDiv = document.getElementById('links-chips');
-  const linksSection = document.getElementById('panel-links');
-  if (note && note.links && note.links.length > 0) {
-    linksDiv.innerHTML = note.links.map(l =>
-      `<span class="link-chip" onclick="selectById('${l}')">${l.replace(/-/g,' ')}</span>`
-    ).join('');
-    linksSection.style.display = '';
-  } else {
-    linksSection.style.display = 'none';
-  }
-}
-
-function selectById(id) {
-  const node = allNodes.find(n => n.id === id);
-  if (node) {
-    selectedNode = node;
-    showNote(node);
-    hoveredNode = node;
-    setTimeout(() => { if (hoveredNode === node) hoveredNode = null; }, 2000);
-  }
-}
-
-// ================================================================
-// CONTROLS
-// ================================================================
-function restartAnimation() {
-  if (animFrameId) cancelAnimationFrame(animFrameId);
-  selectedNode = null;
-  document.getElementById('note-title').innerHTML = '<span class="placeholder">Kliknij węzeł drzewa<br>aby zobaczyć notatkę</span>';
-  document.getElementById('note-content').innerHTML = '';
-  document.getElementById('panel-links').style.display = 'none';
-  initAnimation();
-  animFrameId = requestAnimationFrame(animate);
-}
-
-function resetToExample() {
-  currentNotes = parseAllNotes(EXAMPLE_NOTES_MD);
-  restartAnimation();
-}
-
-// ================================================================
-// FILE UPLOAD — wczytaj własne notatki Obsidian
-// ================================================================
-document.getElementById('file-input').addEventListener('change', e => {
-  loadFiles(Array.from(e.target.files));
-  e.target.value = '';
-});
-
-// Drag & drop
-const container = document.getElementById('tree-container');
-const overlay = document.getElementById('drop-overlay');
-
-container.addEventListener('dragover', e => { e.preventDefault(); overlay.classList.add('active'); });
-container.addEventListener('dragleave', e => { if (!container.contains(e.relatedTarget)) overlay.classList.remove('active'); });
-container.addEventListener('drop', e => {
+// Touch
+let tx0,ty0,tt0;
+canvas.addEventListener('touchstart',e=>{
   e.preventDefault();
-  overlay.classList.remove('active');
-  loadFiles(Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.md')));
+  tx0=e.touches[0].clientX; ty0=e.touches[0].clientY; tt0=Date.now();
+},{ passive:false });
+canvas.addEventListener('touchend',e=>{
+  e.preventDefault();
+  const dx=Math.abs(e.changedTouches[0].clientX-tx0), dy=Math.abs(e.changedTouches[0].clientY-ty0);
+  if(dx<16&&dy<16&&Date.now()-tt0<280){
+    const r=canvas.getBoundingClientRect();
+    const n=nodeAt((e.changedTouches[0].clientX-r.left)*(canvas.width/r.width),(e.changedTouches[0].clientY-r.top)*(canvas.height/r.height));
+    if(n){ selected=n; showNote(n); if(window.innerWidth<768) openSheet(); }
+  }
+},{ passive:false });
+
+// ════════════════════════════════════════════════════════════════
+//  NOTE PANEL
+// ════════════════════════════════════════════════════════════════
+function renderMd(md){
+  return '<p>'+md
+    .replace(/```(\w*)\n([\s\S]*?)```/g,(_,l,c)=>`<pre><code>${c.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`)
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/\[\[([^\]|#]+?)(?:\|([^\]]*))?\]\]/g,(_,t,a)=>`<span class="wiki-link" onclick="jumpTo('${t}')">${(a||t).replace(/-/g,' ')}</span>`)
+    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/^- \[x\] (.+)$/gm,'<li style="color:var(--leaf)">✓ $1</li>')
+    .replace(/^- \[ \] (.+)$/gm,'<li style="color:#bbb">☐ $1</li>')
+    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li[\s\S]*?<\/li>\n?)+/g,m=>`<ul>${m}</ul>`)
+    .replace(/^\|(.+)\|$/gm,(_,c)=>{
+      if(c.includes('---')) return '';
+      return '<tr>'+c.split('|').map(x=>`<td>${x.trim()}</td>`).join('')+'</tr>';
+    })
+    .replace(/(<tr>[\s\S]*?<\/tr>\n?)+/g,m=>`<table>${m}</table>`)
+    .replace(/\n\n+/g,'\n</p><p>\n')
+    +'</p>';
+}
+
+function chipsHtml(links){
+  return links.map(l=>`<span class="chip" onclick="jumpTo('${l}')">${l.replace(/-/g,' ')}</span>`).join('');
+}
+
+function showNote(node){
+  const note=currentNotes[node.id];
+  const html=renderMd(node.content||'');
+  const hasLinks=note?.links?.length>0;
+
+  // Desktop panel
+  const spTitle=document.getElementById('sp-title');
+  spTitle.textContent=node.name; spTitle.classList.remove('empty');
+  document.getElementById('sp-content').innerHTML=html;
+  const spLinks=document.getElementById('sp-links');
+  if(hasLinks){ document.getElementById('sp-chips').innerHTML=chipsHtml(note.links); spLinks.style.display=''; }
+  else spLinks.style.display='none';
+
+  // Mobile sheet
+  document.getElementById('sheet-title').textContent=node.name;
+  document.getElementById('sheet-content').innerHTML=html;
+  const shLinks=document.getElementById('sheet-links-wrap');
+  if(hasLinks){ document.getElementById('sheet-chips').innerHTML=chipsHtml(note.links); shLinks.style.display=''; }
+  else shLinks.style.display='none';
+}
+
+function jumpTo(id){
+  const n=allNodes.find(x=>x.id===id);
+  if(!n) return;
+  selected=n; showNote(n);
+  if(window.innerWidth<768){ openSheet(); }
+  else { hovered=n; setTimeout(()=>{ if(hovered===n) hovered=null; },1800); }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  BOTTOM SHEET — mobile
+// ════════════════════════════════════════════════════════════════
+const sheet=document.getElementById('sheet');
+const backdrop=document.getElementById('backdrop');
+
+function openSheet(){ sheet.classList.add('open'); backdrop.classList.add('on'); }
+function closeSheet(){ sheet.classList.remove('open'); backdrop.classList.remove('on'); }
+
+// Swipe to dismiss
+let sy0=0;
+document.getElementById('sheet-handle').addEventListener('touchstart',e=>{ sy0=e.touches[0].clientY; sheet.style.transition='none'; });
+document.getElementById('sheet-handle').addEventListener('touchmove',e=>{
+  const dy=e.touches[0].clientY-sy0;
+  if(dy>0){ sheet.style.transform=`translateY(${dy}px)`; e.preventDefault(); }
+},{ passive:false });
+document.getElementById('sheet-handle').addEventListener('touchend',e=>{
+  sheet.style.transition='';
+  const dy=e.changedTouches[0].clientY-sy0;
+  if(dy>90) closeSheet();
+  else sheet.style.transform='';
 });
 
-function loadFiles(files) {
-  if (!files.length) return;
-  const mdFiles = files.filter(f => f.name.endsWith('.md'));
-  if (!mdFiles.length) { alert('Brak plików .md!'); return; }
+// ════════════════════════════════════════════════════════════════
+//  CONTROLS
+// ════════════════════════════════════════════════════════════════
+function restartAnim(){
+  if(rafId) cancelAnimationFrame(rafId);
+  selected=null; hovered=null; closeSheet();
+  document.getElementById('sp-title').innerHTML='Kliknij węzeł drzewa';
+  document.getElementById('sp-title').className='empty';
+  document.getElementById('sp-content').innerHTML='';
+  document.getElementById('sp-links').style.display='none';
+  initAnim();
+  rafId=requestAnimationFrame(animate);
+}
+function resetExample(){ currentNotes=parseNotes(EXAMPLE); restartAnim(); }
 
-  let loaded = 0;
-  const mdMap = {};
+// ════════════════════════════════════════════════════════════════
+//  FILE UPLOAD
+// ════════════════════════════════════════════════════════════════
+document.getElementById('file-input').addEventListener('change',e=>{ loadFiles([...e.target.files]); e.target.value=''; });
 
-  mdFiles.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const name = file.name.replace(/\.md$/, '');
-      mdMap[name] = ev.target.result;
-      loaded++;
-      if (loaded === mdFiles.length) {
-        currentNotes = parseAllNotes(mdMap);
-        restartAnimation();
-      }
-    };
-    reader.readAsText(file);
+const tc=document.getElementById('tree-container');
+const dro=document.getElementById('drop-overlay');
+tc.addEventListener('dragover',e=>{ e.preventDefault(); dro.classList.add('active'); });
+tc.addEventListener('dragleave',e=>{ if(!tc.contains(e.relatedTarget)) dro.classList.remove('active'); });
+tc.addEventListener('drop',e=>{ e.preventDefault(); dro.classList.remove('active'); loadFiles([...e.dataTransfer.files].filter(f=>f.name.endsWith('.md'))); });
+
+function loadFiles(files){
+  const mds=files.filter(f=>f.name.endsWith('.md'));
+  if(!mds.length) return;
+  let n=0; const map={};
+  mds.forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{ map[f.name.replace(/\.md$/,'')]=ev.target.result; if(++n===mds.length){ currentNotes=parseNotes(map); restartAnim(); } };
+    reader.readAsText(f);
   });
 }
 
-// ================================================================
-// START
-// ================================================================
-restartAnimation();
+// ════════════════════════════════════════════════════════════════
+//  START — wait for Caveat font
+// ════════════════════════════════════════════════════════════════
+document.fonts.ready.then(()=> restartAnim());
 </script>
 </body>
 </html>
